@@ -1,0 +1,278 @@
+.section ".text"
+
+main:
+    addi $sp, $zero, 0xFFC
+    addi $s0, $zero, -0x100     // MMIO consola/teclado
+
+    addi $s1, $zero, 5          // cabeza x
+    addi $s2, $zero, 5          // cabeza y
+
+    addi $s3, $zero, 4          // cuerpo 1 x
+    addi $s4, $zero, 5          // cuerpo 1 y
+
+    addi $s5, $zero, -1         // cuerpo 2 x
+    addi $s6, $zero, -1         // cuerpo 2 y
+
+    addi $s7, $zero, 2          // largo actual: empieza en 2
+
+    addi $2, $zero, 10          // comida x
+    addi $3, $zero, 5           // comida y
+
+    orh  $a0, $zero, .hi16 str_clear
+    ori  $a0, $a0, .lo16 str_clear
+    jal  print_asciiz
+
+    orh  $a0, $zero, .hi16 str_titulo
+    ori  $a0, $a0, .lo16 str_titulo
+    jal  print_asciiz
+
+    jal  dibujar_comida
+    jal  dibujar_snake
+
+loop:
+    lb   $t0, 0($s0)
+    beq  $t0, $zero, loop
+
+    add  $4, $s1, $zero         // cabeza anterior x
+    add  $5, $s2, $zero         // cabeza anterior y
+    add  $6, $s3, $zero         // cuerpo 1 anterior x
+    add  $7, $s4, $zero         // cuerpo 1 anterior y
+    add  $8, $s5, $zero         // cuerpo 2 anterior x
+    add  $9, $s6, $zero         // cuerpo 2 anterior y
+
+    addi $t1, $zero, 'w'
+    beq  $t0, $t1, arriba
+
+    addi $t1, $zero, 's'
+    beq  $t0, $t1, abajo
+
+    addi $t1, $zero, 'a'
+    beq  $t0, $t1, izquierda
+
+    addi $t1, $zero, 'd'
+    beq  $t0, $t1, derecha
+
+    j    loop
+
+arriba:
+    addi $s2, $s2, -1
+    j    despues_mover
+
+abajo:
+    addi $s2, $s2, 1
+    j    despues_mover
+
+izquierda:
+    addi $s1, $s1, -1
+    j    despues_mover
+
+derecha:
+    addi $s1, $s1, 1
+
+despues_mover:
+    addi $t1, $zero, 0
+    beq  $s1, $t1, perder
+    beq  $s2, $t1, perder
+
+    addi $t1, $zero, 15
+    beq  $s1, $t1, perder
+    beq  $s2, $t1, perder
+
+    // choque contra cuerpo 1
+    bne  $s1, $s3, revisar_cuerpo_2
+    beq  $s2, $s4, perder
+
+revisar_cuerpo_2:
+    addi $t1, $zero, 3
+    blt  $s7, $t1, revisar_comida
+
+    bne  $s1, $s5, revisar_comida
+    beq  $s2, $s6, perder
+
+revisar_comida:
+    bne  $s1, $2, no_comio
+    bne  $s2, $3, no_comio
+    j    comio
+
+no_comio:
+    jal  borrar_cola
+
+    addi $t1, $zero, 3
+    blt  $s7, $t1, actualizar_largo_2
+
+actualizar_largo_3:
+    add  $s5, $6, $zero
+    add  $s6, $7, $zero
+
+actualizar_largo_2:
+    add  $s3, $4, $zero
+    add  $s4, $5, $zero
+
+    jal  dibujar_snake
+    j    loop
+
+comio:
+    addi $t1, $zero, 3
+    beq  $s7, $t1, ganar
+
+    addi $s7, $zero, 3
+
+    add  $s5, $6, $zero
+    add  $s6, $7, $zero
+
+    add  $s3, $4, $zero
+    add  $s4, $5, $zero
+
+    addi $2, $zero, 5
+    addi $3, $zero, 10
+
+    jal  dibujar_comida
+    jal  dibujar_snake
+    j    loop
+
+ganar:
+    orh  $a0, $zero, .hi16 str_ganaste
+    ori  $a0, $a0, .lo16 str_ganaste
+    jal  print_asciiz
+    trap 1
+
+perder:
+    orh  $a0, $zero, .hi16 str_perdiste
+    ori  $a0, $a0, .lo16 str_perdiste
+    jal  print_asciiz
+    trap 1
+
+borrar_cola:
+    addi $sp, $sp, -4
+    sw   $ra, 0($sp)
+
+    addi $t1, $zero, 3
+    blt  $s7, $t1, borrar_cola_largo_2
+
+borrar_cola_largo_3:
+    add  $a0, $s5, $zero
+    add  $a1, $s6, $zero
+    addi $a2, $zero, ' '
+    jal  dibujar_en_posicion
+    j    fin_borrar_cola
+
+borrar_cola_largo_2:
+    add  $a0, $s3, $zero
+    add  $a1, $s4, $zero
+    addi $a2, $zero, ' '
+    jal  dibujar_en_posicion
+
+fin_borrar_cola:
+    lw   $ra, 0($sp)
+    addi $sp, $sp, 4
+    jr   $ra, 0
+
+dibujar_comida:
+    addi $sp, $sp, -4
+    sw   $ra, 0($sp)
+
+    add  $a0, $2, $zero
+    add  $a1, $3, $zero
+    addi $a2, $zero, '+'
+    jal  dibujar_en_posicion
+
+    lw   $ra, 0($sp)
+    addi $sp, $sp, 4
+    jr   $ra, 0
+
+dibujar_snake:
+    addi $sp, $sp, -4
+    sw   $ra, 0($sp)
+
+    add  $a0, $s1, $zero
+    add  $a1, $s2, $zero
+    addi $a2, $zero, 'O'
+    jal  dibujar_en_posicion
+
+    add  $a0, $s3, $zero
+    add  $a1, $s4, $zero
+    addi $a2, $zero, 'o'
+    jal  dibujar_en_posicion
+
+    addi $t1, $zero, 3
+    blt  $s7, $t1, fin_dibujar_snake
+
+    add  $a0, $s5, $zero
+    add  $a1, $s6, $zero
+    addi $a2, $zero, 'o'
+    jal  dibujar_en_posicion
+
+fin_dibujar_snake:
+    lw   $ra, 0($sp)
+    addi $sp, $sp, 4
+    jr   $ra, 0
+
+dibujar_en_posicion:
+    addi $sp, $sp, -16
+    sw   $ra, 0($sp)
+    sw   $a2, 4($sp)
+    sw   $12, 8($sp)
+    sw   $13, 12($sp)
+
+    add  $12, $a0, $zero
+    add  $13, $a1, $zero
+
+    orh  $a0, $zero, .hi16 str_home
+    ori  $a0, $a0, .lo16 str_home
+    jal  print_asciiz
+
+mover_y:
+    beq  $13, $zero, mover_x
+    orh  $a0, $zero, .hi16 str_down
+    ori  $a0, $a0, .lo16 str_down
+    jal  print_asciiz
+    addi $13, $13, -1
+    j    mover_y
+
+mover_x:
+    beq  $12, $zero, dibujar_char
+    orh  $a0, $zero, .hi16 str_right
+    ori  $a0, $a0, .lo16 str_right
+    jal  print_asciiz
+    addi $12, $12, -1
+    j    mover_x
+
+dibujar_char:
+    lw   $a0, 4($sp)
+    sb   $a0, 0($s0)
+
+    lw   $ra, 0($sp)
+    lw   $12, 8($sp)
+    lw   $13, 12($sp)
+    addi $sp, $sp, 16
+    jr   $ra, 0
+
+print_asciiz:
+    addi $sp, $sp, -8
+    sw   $12, 0($sp)
+    sw   $13, 4($sp)
+
+    add  $12, $a0, $zero
+
+print_loop:
+    lbu  $13, 0($12)
+    beq  $13, $zero, print_fin
+    sb   $13, 0($s0)
+    addi $12, $12, 1
+    j    print_loop
+
+print_fin:
+    lw   $12, 0($sp)
+    lw   $13, 4($sp)
+    addi $sp, $sp, 8
+    jr   $ra, 0
+
+.section ".data"
+
+str_clear:    .asciiz "\x1b[2J\x1b[H"
+str_home:     .asciiz "\x1b[H"
+str_down:     .asciiz "\x1b[B"
+str_right:    .asciiz "\x1b[C"
+str_titulo:   .asciiz "SNAKE RTM32\r\nCOME 2 + PARA GANAR\r\n"
+str_ganaste:  .asciiz "\x1b[18HGANASTE!\r\n"
+str_perdiste: .asciiz "\x1b[18HPERDISTE!\r\n"
