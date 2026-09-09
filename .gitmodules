@@ -1,0 +1,9 @@
+[submodule "Intento-Cpu"]
+	path = Intento-Cpu
+	url = https://github.com/Chicho2000/Intento-Cpu.git
+[submodule "Trabajo-BCMS"]
+	path = Trabajo-BCMS
+	url = https://github.com/Matuti2611/Trabajo-BCMS.git
+[submodule "Logica-de-Branch-N"]
+	path = Logica-de-Branch-N
+	url = https://github.com/Chicho2000/Logica-de-Branch-N.git
