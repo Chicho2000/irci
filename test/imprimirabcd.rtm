@@ -1,0 +1,20 @@
+.section ".text"
+
+main:
+    lw   $s0, MMIO_ADDR($zero)  // Carga la dirección MMIO (0xFFFFFF00) en $s0
+    addi $t1, $zero, 97         // ASCII de 'a' = 97
+    addi $t2, $zero, 101        // ASCII de 'e' = 101 (límite para detenerse tras la 'd')
+
+bucle_imprimir:
+    beq  $t1, $t2, fin          // Si $t1 llega a 101 ('e'), termina el bucle
+
+    sb   $t1, 0($s0)            // Envía la letra actual a la pantalla/picocom
+    addi $t1, $t1, 1            // Avanza a la siguiente letra (97='a', 98='b', 99='c', 100='d')
+
+    j    bucle_imprimir         // Repite la secuencia
+
+fin:
+    j    fin                    // Cierre limpio en bucle
+
+.section ".data"
+MMIO_ADDR: .word 0xFFFFFF00
